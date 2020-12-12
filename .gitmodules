@@ -1,0 +1,15 @@
+[submodule "lib/ds-test"]
+	path = lib/ds-test
+	url = https://github.com/dapphub/ds-test
+[submodule "lib/ds-math"]
+	path = lib/ds-math
+	url = https://github.com/dapphub/ds-math
+[submodule "library/uniswap-v2-core"]
+	path = library/uniswap-v2-core
+	url = https://github.com/Uniswap/uniswap-v2-core
+[submodule "lib/dss-interfaces"]
+	path = lib/dss-interfaces
+	url = https://github.com/makerdao/dss-interfaces
+[submodule "lib/dss"]
+	path = lib/dss
+	url = https://github.com/makerdao/dss
