@@ -7,3 +7,6 @@
 [submodule "library/uniswap-v2-core"]
 	path = library/uniswap-v2-core
 	url = https://github.com/Uniswap/uniswap-v2-core
+[submodule "lib/dss-interfaces"]
+	path = lib/dss-interfaces
+	url = https://github.com/makerdao/dss-interfaces
