@@ -75,7 +75,6 @@ contract DssArsTest is DSTest {
 
     address me;
 
-    /* ========== KEG ========== */
     TestVat vat;
     DaiJoin daiJoin;
     Dai dai;
@@ -89,14 +88,9 @@ contract DssArsTest is DSTest {
     User user1;
     User user2;
 
-    // CHEAT_CODE = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D
-    bytes20 constant CHEAT_CODE = bytes20(uint160(uint256(keccak256('hevm cheat code'))));
-
-
     /* ========== Set UP ========== */
     function setUp() public {
         me = address(this);
-        hevm = Hevm(address(CHEAT_CODE));
 
         vat = new TestVat();
         vat = vat;
