@@ -427,6 +427,46 @@ contract DssArsTest is DSTest {
         assertTrue(poker.pokeHasBeenCalled());
     }
 
+    function test_update_period_call_twice_same_block() public {
+        (uint112 _reserve0,uint112 _reserve1,uint32 _blockTimestampLast) = ara.getReserves();
+        gov.doRely(address(me));
+        ara.file("poker", address(poker));
+        ara.file("period", 0);
+
+        assertEq(uint256(_reserve0), uint256(0 ether));
+        assertEq(uint256(_reserve1), uint256(0 ether));
+
+        hevm.warp(11 minutes);
+        gov.doDeposit(uint256(200000 ether), uint256(4000 ether));
+
+        assertTrue(poker.pokeHasBeenCalled());
+        poker.reset();
+
+        gov.doDeposit(uint256(200 ether), uint256(40 ether));
+
+        assertTrue(poker.pokeHasBeenCalled());
+    }
+
+    function test_update_period_call_twice_same_block_period_one() public {
+        (uint112 _reserve0,uint112 _reserve1,uint32 _blockTimestampLast) = ara.getReserves();
+        gov.doRely(address(me));
+        ara.file("poker", address(poker));
+        ara.file("period", 1);
+
+        assertEq(uint256(_reserve0), uint256(0 ether));
+        assertEq(uint256(_reserve1), uint256(0 ether));
+
+        hevm.warp(11 minutes);
+        gov.doDeposit(uint256(200000 ether), uint256(4000 ether));
+
+        assertTrue(poker.pokeHasBeenCalled());
+        poker.reset();
+
+        gov.doDeposit(uint256(200 ether), uint256(40 ether));
+
+        assertTrue(!poker.pokeHasBeenCalled());
+    }
+
     // --- Flash mint test ---
 
     function test_flashMint_pay_fees() public {

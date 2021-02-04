@@ -168,7 +168,7 @@ contract DssAra {
         }
 
         uint32 timePeriod = blockTimestamp - blockLastPeriodCheck;
-        if (period < timePeriod && address(poker) != address(0)) {
+        if (period <= timePeriod && address(poker) != address(0)) {
             address _token = token;
 
             poker.poke(_token, price0CumulativeLast, price1CumulativeLast, _daiReserve, _tokenReserve);
