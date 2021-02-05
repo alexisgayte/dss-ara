@@ -2,10 +2,8 @@ pragma solidity ^0.6.7;
 
 import "./interface/IFlashLenderReceiver.sol";
 import "./interface/IFlashMinterReceiver.sol";
+import { GemAbstract } from "dss-interfaces/ERC/GemAbstract.sol";
 
-interface TokenLike {
-    function balanceOf(address account) external view returns (uint256);
-}
 
 interface IPoker {
     function poke(address token, uint256 price0CumulativeLast, uint256 price1CumulativeLast, uint112 _daiReserve, uint112 _tokenReserve) external;
@@ -25,24 +23,7 @@ library UQ112x112 {
     }
 }
 
-library SafeMath {
-    function add(uint x, uint y) internal pure returns (uint z) {
-        require((z = x + y) >= x, 'ds-math-add-overflow');
-    }
-
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, 'ds-math-sub-underflow');
-    }
-
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x, 'ds-math-mul-overflow');
-    }
-}
-
 contract DssAra {
-
-    using SafeMath  for uint256;
-
     // --- Auth ---
     mapping (address => uint256) public wards;
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
@@ -54,8 +35,6 @@ contract DssAra {
     modifier lock() {require(unlocked == 1, 'DssAraFlashLender/re-entrance');unlocked = 0;_;unlocked = 1;}
 
     // --- Data ---
-    bytes4  private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
-
     address public dai;
     address public token;
 
@@ -97,6 +76,15 @@ contract DssAra {
 
     // --- Math ---
     uint256 constant FEES_PRECISION = 10 ** 6;
+    function add(uint x, uint y) internal pure returns (uint z) {
+        require((z = x + y) >= x, 'ds-math-add-overflow');
+    }
+    function sub(uint x, uint y) internal pure returns (uint z) {
+        require((z = x - y) <= x, 'ds-math-sub-underflow');
+    }
+    function mul(uint x, uint y) internal pure returns (uint z) {
+        require(y == 0 || (z = x * y) / y == x, 'ds-math-mul-overflow');
+    }
 
     // --- Administration ---
     function file(bytes32 what, uint32 data) external auth {
@@ -125,10 +113,10 @@ contract DssAra {
     // --- Restricted Functions ---
     function deposit() external lock auth returns (uint256 amount0, uint256 amount1) {
         (uint112 _daiReserve, uint112 _tokenReserve,) = getReserves();
-        uint256 daiBalance   = TokenLike(dai).balanceOf(address(this));
-        uint256 tokenBalance = TokenLike(token).balanceOf(address(this));
-        amount0 = daiBalance.sub(_daiReserve);
-        amount1 = tokenBalance.sub(_tokenReserve);
+        uint256 daiBalance   = GemAbstract(dai).balanceOf(address(this));
+        uint256 tokenBalance = GemAbstract(token).balanceOf(address(this));
+        amount0 = sub(daiBalance, _daiReserve);
+        amount1 = sub(tokenBalance, _tokenReserve);
 
         _update(daiBalance, tokenBalance, _daiReserve, _tokenReserve);
         emit Deposit(msg.sender, amount0, amount1);
@@ -140,23 +128,17 @@ contract DssAra {
         address _dai   = dai;
         address _token = token;
 
-        _safeTransfer(_dai, to, amount0Out);
-        _safeTransfer(_token, to, amount1Out);
+        GemAbstract(_dai).transfer(to, amount0Out);
+        GemAbstract(_token).transfer(to, amount1Out);
 
-        uint256 daiBalance   = TokenLike(_dai).balanceOf(address(this));
-        uint256 tokenBalance = TokenLike(_token).balanceOf(address(this));
+        uint256 daiBalance   = GemAbstract(_dai).balanceOf(address(this));
+        uint256 tokenBalance = GemAbstract(_token).balanceOf(address(this));
 
         _update(daiBalance, tokenBalance, _daiReserve, _tokenReserve);
         emit Withdraw(msg.sender, amount0Out, amount1Out, to);
     }
 
-
     // --- Private Functions ---
-    function _safeTransfer(address _token, address to, uint256 value) private {
-        (bool success, bytes memory data) = _token.call(abi.encodeWithSelector(SELECTOR, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'DssAra/transfer-failed');
-    }
-
     function _update(uint256 daiBalance, uint256 tokenBalance, uint112 _daiReserve, uint112 _tokenReserve) private {
         require(daiBalance <= uint112(-1) && tokenBalance <= uint112(-1), 'DssAra/overflow');
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
@@ -173,8 +155,8 @@ contract DssAra {
 
             poker.poke(_token, price0CumulativeLast, price1CumulativeLast, _daiReserve, _tokenReserve);
 
-            daiBalance   = TokenLike(dai).balanceOf(address(this));
-            tokenBalance = TokenLike(_token).balanceOf(address(this));
+            daiBalance   = GemAbstract(dai).balanceOf(address(this));
+            tokenBalance = GemAbstract(_token).balanceOf(address(this));
             require(daiBalance <= uint112(-1) && tokenBalance <= uint112(-1), 'DssAra/overflow');
 
             blockLastPeriodCheck = blockTimestamp;
@@ -199,20 +181,20 @@ contract DssAra {
             address _token = token;
             require(to != _dai && to != _token, 'DssAra/invalid-to');
 
-            if (amount0Out > 0) _safeTransfer(_dai, to, amount0Out);
-            if (amount1Out > 0) _safeTransfer(_token, to, amount1Out);
+            if (amount0Out > 0) GemAbstract(_dai).transfer(to, amount0Out);
+            if (amount1Out > 0) GemAbstract(_token).transfer(to, amount1Out);
 
-            daiBalance   = TokenLike(_dai).balanceOf(address(this));
-            tokenBalance = TokenLike(_token).balanceOf(address(this));
+            daiBalance   = GemAbstract(_dai).balanceOf(address(this));
+            tokenBalance = GemAbstract(_token).balanceOf(address(this));
         }
         uint256 amount0In = daiBalance > _daiReserve - amount0Out ? daiBalance - (_daiReserve - amount0Out) : 0;
         uint256 amount1In = tokenBalance > _tokenReserve - amount1Out ? tokenBalance - (_tokenReserve - amount1Out) : 0;
         require(amount0In > 0 || amount1In > 0, 'DssAra/insufficient-input-amount');
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-            uint256 daiBalanceAdjusted   = daiBalance.mul(FEES_PRECISION).sub(amount0In.mul(fees));
-            uint256 tokenBalanceAdjusted = tokenBalance.mul(FEES_PRECISION).sub(amount1In.mul(fees));
+            uint256 daiBalanceAdjusted   = sub(mul(daiBalance, FEES_PRECISION), mul(amount0In, fees));
+            uint256 tokenBalanceAdjusted = sub(mul(tokenBalance, FEES_PRECISION), mul(amount1In, fees));
 
-            require(daiBalanceAdjusted.mul(tokenBalanceAdjusted) >= uint256(_daiReserve).mul(_tokenReserve).mul(FEES_PRECISION**2), 'DssAra/K-mismatch');
+            require(mul(daiBalanceAdjusted, tokenBalanceAdjusted) >= mul(mul(uint256(_daiReserve), _tokenReserve), FEES_PRECISION**2), 'DssAra/K-mismatch');
         }
 
         _update(daiBalance, tokenBalance, _daiReserve, _tokenReserve);
@@ -222,36 +204,36 @@ contract DssAra {
 
     // --- Flash Lender/Minter Functions---
     function flashLoan(address _receiver, uint256 _amount, bytes calldata _data) external lock {
-        uint256 _fee = _amount.mul(flashFees) / FEES_PRECISION;
+        uint256 _fee = mul(_amount, flashFees) / FEES_PRECISION;
         address _token = token;
-        uint256 _balanceTarget = TokenLike(_token).balanceOf(address(this)).add(_fee);
+        uint256 _balanceTarget = add(GemAbstract(_token).balanceOf(address(this)), _fee);
 
-        _safeTransfer(_token, _receiver, _amount);
+        GemAbstract(_token).transfer(_receiver, _amount);
 
         IFlashLenderReceiver(_receiver).onFlashLoan(msg.sender, _amount, _fee, _data);
-        uint256 tokenBalance = TokenLike(_token).balanceOf(address(this));
+        uint256 tokenBalance = GemAbstract(_token).balanceOf(address(this));
         require(tokenBalance >= _balanceTarget, "DssAraFlashLender/token-unpaid-loan");
 
         (uint112 _daiReserve, uint112 _tokenReserve,) = getReserves();
-        uint256 daiBalance = TokenLike(dai).balanceOf(address(this));
+        uint256 daiBalance = GemAbstract(dai).balanceOf(address(this));
         _update(daiBalance, tokenBalance, _daiReserve, _tokenReserve);
 
         emit Loan(_receiver, _amount, _fee);
     }
 
     function flashMint(address _receiver, uint256 _amount, bytes calldata _data) external lock {
-        uint256 _fee = _amount.mul(flashFees) / FEES_PRECISION;
+        uint256 _fee = mul(_amount, flashFees) / FEES_PRECISION;
         address _dai = dai;
-        uint256 _balanceTarget = TokenLike(_dai).balanceOf(address(this)).add(_fee);
+        uint256 _balanceTarget = add(GemAbstract(_dai).balanceOf(address(this)), _fee);
 
-        _safeTransfer(_dai, _receiver, _amount);
+        GemAbstract(_dai).transfer(_receiver, _amount);
 
         IFlashMinterReceiver(_receiver).onFlashMint(msg.sender, _amount, _fee, _data);
-        uint256 daiBalance = TokenLike(_dai).balanceOf(address(this));
+        uint256 daiBalance = GemAbstract(_dai).balanceOf(address(this));
         require(daiBalance >= _balanceTarget, "DssAraFlashLender/dai-unpaid-loan");
 
         (uint112 _daiReserve, uint112 _tokenReserve,) = getReserves();
-        uint256 tokenBalance = TokenLike(token).balanceOf(address(this));
+        uint256 tokenBalance = GemAbstract(token).balanceOf(address(this));
         _update(daiBalance, tokenBalance, _daiReserve, _tokenReserve);
 
         emit Mint(_receiver, _amount, _fee);
