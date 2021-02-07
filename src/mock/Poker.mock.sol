@@ -19,7 +19,7 @@ contract PokerMock {
         dai = dai_;
     }
 
-    function poke(address token_, uint256 price0CumulativeLast_, uint256 price1CumulativeLast_, uint112 daiReserve_, uint112 tokenReserve_) external {
+    function poke(address token_, uint256 price0CumulativeLast_, uint256 price1CumulativeLast_, uint112 daiReserve_, uint112 tokenReserve_, uint112 daiBalance_, uint112 tokenBalance_) external {
         pokeHasBeenCalled = true;
         token = token_;
         price0CumulativeLast = price0CumulativeLast_;

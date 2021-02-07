@@ -6,7 +6,7 @@ import { GemAbstract } from "dss-interfaces/ERC/GemAbstract.sol";
 
 
 interface IPoker {
-    function poke(address token, uint256 price0CumulativeLast, uint256 price1CumulativeLast, uint112 _daiReserve, uint112 _tokenReserve) external;
+    function poke(address token, uint256 price0CumulativeLast, uint256 price1CumulativeLast, uint112 _daiReserve, uint112 _tokenReserve, uint112 _daiBalance, uint112 _tokenBalance) external;
 }
 
 library UQ112x112 {
@@ -153,7 +153,7 @@ contract DssAra {
         if (period <= timePeriod && address(poker) != address(0)) {
             address _token = token;
 
-            poker.poke(_token, price0CumulativeLast, price1CumulativeLast, _daiReserve, _tokenReserve);
+            poker.poke(_token, price0CumulativeLast, price1CumulativeLast, _daiReserve, _tokenReserve, uint112(daiBalance), uint112(tokenBalance));
 
             daiBalance   = GemAbstract(dai).balanceOf(address(this));
             tokenBalance = GemAbstract(_token).balanceOf(address(this));
